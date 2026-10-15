@@ -1,0 +1,409 @@
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <time.h>
+
+#define VAT_RATE 0.12f
+#define DISC_RATE 0.20f
+#define STARTING_BALANCE 5000.00f 
+
+typedef struct {
+    const char *category;
+    const char *name;
+    float price;        
+} MenuItem;
+
+static const MenuItem menu[] = {
+    {"PIZZAS", "Pepperoni Pizza",            450.00f},
+    {"PIZZAS", "Hawaiian Pizza",             450.00f},
+    {"PIZZAS", "Cheese Pizza",               420.00f},
+    {"PIZZAS", "Garden Fresh Pizza",         430.00f},
+    {"PIZZAS", "Manager's Choice Pizza",     520.00f},
+    {"PIZZAS", "Shakey's Special Pizza",     540.00f},
+    {"PIZZAS", "Meat Lovers Pizza",          530.00f},
+    {"PIZZAS", "Supreme Pizza",              500.00f},
+    {"PIZZAS", "Bacon Cheeseburger Pizza",   520.00f},
+    {"PIZZAS", "Mushroom & Cheese Pizza",    440.00f},
+
+    {"CHICKEN", "Chicken 'N' Mojos",         350.00f},
+    {"CHICKEN", "Fried Chicken (2 pcs)",     260.00f},
+    {"CHICKEN", "Chicken Wings",             280.00f},
+    {"CHICKEN", "Spicy Chicken Wings",       300.00f},
+
+    {"PASTA", "Spaghetti",                   250.00f},
+    {"PASTA", "Carbonara",                   270.00f},
+    {"PASTA", "Baked Lasagna",               290.00f},
+    {"PASTA", "Baked Mac & Cheese",          260.00f},
+
+    {"SIDES", "Mojos",                       180.00f},
+    {"SIDES", "Garlic Bread",                120.00f},
+    {"SIDES", "Onion Rings",                 150.00f},
+    {"SIDES", "French Fries",                130.00f},
+    {"SIDES", "Cheese Sticks",               160.00f},
+
+    {"SOUP & SALAD", "Cream of Mushroom Soup", 110.00f},
+    {"SOUP & SALAD", "Caesar Salad",           190.00f},
+    {"SOUP & SALAD", "Garden Salad",           170.00f},
+
+    {"DESSERTS", "Brownie Sundae",           140.00f},
+    {"DESSERTS", "Chocolate Cake Slice",     130.00f},
+
+    {"DRINKS", "Softdrinks",                  80.00f},
+    {"DRINKS", "Iced Tea",                    90.00f},
+    {"DRINKS", "Lemonade",                    85.00f},
+    {"DRINKS", "Pineapple Juice",             95.00f},
+    {"DRINKS", "Hot Coffee",                  70.00f},
+    {"DRINKS", "Bottled Water",               50.00f}
+};
+#define ITEM_COUNT ((int)(sizeof(menu) / sizeof(menu[0])))
+
+static void clearInput(void)
+{
+    int ch;
+    while ((ch = getchar()) != '\n' && ch != EOF) {}
+}
+
+static void readDigits(const char *prompt, int len, char *out)
+{
+    char buf[64];
+    int ok;
+    do {
+        ok = 1;
+        printf("%s", prompt);
+        scanf("%63s", buf);
+        if ((int)strlen(buf) != len) ok = 0;
+        for (int i = 0; ok && buf[i]; i++)
+            if (!isdigit((unsigned char)buf[i])) ok = 0;
+        if (!ok) printf("Invalid input. Enter exactly %d digits.\n", len);
+    } while (!ok);
+    strcpy(out, buf);
+}
+
+static void printMenu(void)
+{
+    const char *lastCat = "";
+    printf("\n========================================\n");
+    printf("             SHAKEY'S MENU\n");
+    printf("========================================\n");
+    for (int i = 0; i < ITEM_COUNT; i++) {
+        if (strcmp(lastCat, menu[i].category) != 0) {
+            printf("\n%s:\n", menu[i].category);
+            lastCat = menu[i].category;
+        }
+        printf("%2d - %-26s Php %7.2f\n", i + 1, menu[i].name, menu[i].price);
+    }
+    printf("----------------------------------------\n");
+}
+
+static void line(const char *label, float amount)
+{
+    printf("%-30s%10.2f\n", label, amount);
+}
+
+int main(void)
+{
+    char username[30], password[30];
+    int attempts = 0, loginSuccess = 0;
+
+    printf("========================================\n");
+    printf("          === SHAKEY'S POS ===\n");
+    printf("========================================\n\n");
+    printf("Login to continue\n");
+
+    while (attempts < 3) {
+        printf("\nUsername: ");
+        scanf("%29s", username);
+        printf("Password: ");
+        scanf("%29s", password);
+
+        if (strcmp(username, "admin") == 0 && strcmp(password, "1234") == 0) {
+            loginSuccess = 1;
+            printf("\nLogin successful!\n");
+            printf("Cashier: Good day! Welcome to Shakey's!\n");
+            break;
+        } else {
+            attempts++;
+            printf("\nInvalid username or password!\n");
+            if (attempts < 3) {
+                printf("Please try again.\n");
+                printf("Attempts remaining: %d\n", 3 - attempts);
+            }
+        }
+    }
+
+    if (!loginSuccess) {
+        printf("\nToo many failed attempts.\nAccess denied!\n");
+        return 0;
+    }
+
+    int quantities[ITEM_COUNT] = {0};
+    float itemTotals[ITEM_COUNT] = {0};
+    int choice, quantity;
+    char again;
+
+    do {
+        printMenu();
+        printf("Enter your choice (1-%d): ", ITEM_COUNT);
+
+        if (scanf("%d", &choice) != 1) {
+            clearInput();
+            printf("Invalid input. Please enter a menu number.\n");
+            continue;
+        }
+
+        if (choice < 1 || choice > ITEM_COUNT) {
+            printf("Invalid menu choice!\n");
+        } else {
+            printf("Enter quantity: ");
+            if (scanf("%d", &quantity) != 1) {
+                clearInput();
+                quantity = 0;
+            }
+
+            if (quantity <= 0) {
+                printf("Invalid quantity!\n");
+            } else {
+                quantities[choice - 1] += quantity;
+                itemTotals[choice - 1] += quantity * menu[choice - 1].price;
+                printf("%d %s added.\n", quantity, menu[choice - 1].name);
+            }
+        }
+
+        printf("\nDo you want to order more? (Y/N): ");
+        scanf(" %c", &again);
+        again = (char)toupper((unsigned char)again);
+    } while (again == 'Y');
+
+    float subtotal = 0.0f;
+    for (int i = 0; i < ITEM_COUNT; i++)
+        subtotal += itemTotals[i];
+
+    if (subtotal <= 0.0f) {
+        printf("\nNo items were ordered.\n");
+        printf("Please run the program again to start a new order.\n");
+        return 0;
+    }
+
+    char discountChoice;
+    printf("\n========================================\n");
+    printf("              DISCOUNT\n");
+    printf("========================================\n");
+    do {
+        printf("Senior Citizen or PWD? (S/P/N): ");
+        scanf(" %c", &discountChoice);
+        discountChoice = (char)toupper((unsigned char)discountChoice);
+        if (discountChoice != 'S' && discountChoice != 'P' && discountChoice != 'N')
+            printf("Invalid choice. Enter S, P, or N.\n");
+    } while (discountChoice != 'S' && discountChoice != 'P' && discountChoice != 'N');
+
+    int hasDiscount = (discountChoice == 'S' || discountChoice == 'P');
+
+    float vatableSales = 0.0f, vatAmount = 0.0f, vatExempt = 0.0f, zeroRated = 0.0f;
+    float discount = 0.0f, total;
+    float netOfVat = subtotal / (1.0f + VAT_RATE);
+
+    if (hasDiscount) {
+        vatExempt = netOfVat;
+        vatAmount = subtotal - netOfVat;
+        discount = netOfVat * DISC_RATE;
+        total = netOfVat - discount;
+        printf("%s discount applied.\n", discountChoice == 'S' ? "Senior Citizen" : "PWD");
+    } else {
+        vatableSales = netOfVat;
+        vatAmount = subtotal - netOfVat;
+        total = subtotal;
+        printf("No discount applied.\n");
+    }
+
+    printf("\nTotal Amount Due: Php %.2f\n", total);
+
+    int paymentChoice, paymentComplete = 0;
+    float payment = 0.0f, change = 0.0f, remainingBalance = 0.0f;
+    char paymentMethod[20] = "";
+    char provider[30] = "";
+    char lastFour[8] = "";
+    char approvalCode[8] = "";
+
+    while (!paymentComplete) {
+        printf("\n========================================\n");
+        printf("              PAYMENT\n");
+        printf("========================================\n");
+        printf("Total Amount: Php %.2f\n", total);
+        printf("\n1 - Cash\n");
+        printf("2 - Credit/Debit Card   (Balance: Php %.2f)\n", STARTING_BALANCE);
+        printf("3 - E-Wallet            (Balance: Php %.2f)\n", STARTING_BALANCE);
+        printf("Enter payment method: ");
+
+        if (scanf("%d", &paymentChoice) != 1) {
+            clearInput();
+            printf("Invalid payment method!\n");
+            continue;
+        }
+
+        if (paymentChoice == 1) {
+            strcpy(paymentMethod, "CASH");
+            do {
+                printf("\nEnter cash amount: Php ");
+                if (scanf("%f", &payment) != 1) {
+                    clearInput();
+                    payment = 0.0f;
+                }
+                if (payment < total)
+                    printf("Insufficient cash! Please enter enough money.\n");
+            } while (payment < total);
+
+            change = payment - total;
+            paymentComplete = 1;
+        } else if (paymentChoice == 2) {
+            int cardChoice;
+            printf("\nChoose card type:\n");
+            printf("1 - Visa              (Balance: Php %.2f)\n", STARTING_BALANCE);
+            printf("2 - Mastercard        (Balance: Php %.2f)\n", STARTING_BALANCE);
+            printf("3 - American Express  (Balance: Php %.2f)\n", STARTING_BALANCE);
+            do {
+                printf("Enter card type: ");
+                if (scanf("%d", &cardChoice) != 1) {
+                    clearInput();
+                    cardChoice = 0;
+                }
+                if (cardChoice < 1 || cardChoice > 3)
+                    printf("Invalid card type. Choose 1, 2, or 3.\n");
+            } while (cardChoice < 1 || cardChoice > 3);
+
+            if (cardChoice == 1) strcpy(provider, "Visa");
+            else if (cardChoice == 2) strcpy(provider, "Mastercard");
+            else strcpy(provider, "American Express");
+
+            readDigits("Enter last 4 digits of card: ", 4, lastFour);
+            readDigits("Enter approval code (6 digits): ", 6, approvalCode);
+
+            float cardBalance = STARTING_BALANCE;
+            printf("\nAvailable Card Balance: Php %.2f\n", cardBalance);
+            if (cardBalance < total) {
+                printf("Insufficient card balance. Choose another payment method.\n");
+                continue;
+            }
+
+            cardBalance -= total;
+            remainingBalance = cardBalance;
+            strcpy(paymentMethod, "CARD");
+            payment = total;
+            paymentComplete = 1;
+            printf("Card payment successful!\n");
+            printf("Remaining Balance: Php %.2f\n", remainingBalance);
+        } else if (paymentChoice == 3) {
+            int walletChoice;
+            printf("\nChoose e-wallet:\n");
+            printf("1 - GCash     (Balance: Php %.2f)\n", STARTING_BALANCE);
+            printf("2 - Maya      (Balance: Php %.2f)\n", STARTING_BALANCE);
+            printf("3 - GrabPay   (Balance: Php %.2f)\n", STARTING_BALANCE);
+            do {
+                printf("Enter e-wallet choice: ");
+                if (scanf("%d", &walletChoice) != 1) {
+                    clearInput();
+                    walletChoice = 0;
+                }
+                if (walletChoice < 1 || walletChoice > 3)
+                    printf("Invalid e-wallet. Choose 1, 2, or 3.\n");
+            } while (walletChoice < 1 || walletChoice > 3);
+
+            if (walletChoice == 1) strcpy(provider, "GCash");
+            else if (walletChoice == 2) strcpy(provider, "Maya");
+            else strcpy(provider, "GrabPay");
+
+            float walletBalance = STARTING_BALANCE;
+            printf("\nAvailable %s Balance: Php %.2f\n", provider, walletBalance);
+            if (walletBalance < total) {
+                printf("Insufficient e-wallet balance. Choose another payment method.\n");
+                continue;
+            }
+
+            walletBalance -= total;
+            remainingBalance = walletBalance;
+            strcpy(paymentMethod, "E-WALLET");
+            payment = total;
+            paymentComplete = 1;
+            printf("%s payment successful!\n", provider);
+            printf("Remaining Balance: Php %.2f\n", remainingBalance);
+        } else {
+            printf("\nInvalid payment method! Please choose 1, 2, or 3.\n");
+        }
+    }
+
+    time_t now = time(NULL);
+    struct tm *local = localtime(&now);
+    char dateTime[40] = "Date/time unavailable";
+    if (local != NULL)
+        strftime(dateTime, sizeof(dateTime), "%m/%d/%Y %I:%M %p", local);
+
+    static int orderNumber = 1;
+    
+    printf("========================================\n");
+    printf("               SHAKEY'S\n");
+    printf("          Quezon City Branch\n");
+    printf("       Quezon Avenue, Quezon City\n");
+    printf("       VAT REG TIN: 000-000-000-000\n");
+    printf("----------------------------------------\n");
+    printf("Order No.: %04d\n", orderNumber++);
+    printf("Date/Time: %s\n", dateTime);
+    printf("Cashier  : %s\n", username);
+    printf("----------------------------------------\n");
+
+    for (int i = 0; i < ITEM_COUNT; i++) {
+        if (quantities[i] > 0) {
+            char qtyLine[48];
+            printf("%s\n", menu[i].name);
+            snprintf(qtyLine, sizeof(qtyLine), "  %d x %.2f", quantities[i], menu[i].price);
+            line(qtyLine, itemTotals[i]);
+        }
+    }
+
+    printf("----------------------------------------\n");
+    line("Subtotal", subtotal);
+    if (hasDiscount) {
+        char vatLabel[] = "Less: VAT (12%)";
+        line(vatLabel, -vatAmount);
+        line("Less: SC/PWD Discount (20%)", -discount);
+    }
+    line("TOTAL AMOUNT DUE", total);
+    printf("----------------------------------------\n");
+    line("VATable Sales", vatableSales);
+    line("VAT Amount (12%)", hasDiscount ? 0.0f : vatAmount);
+    line("VAT-Exempt Sales", vatExempt);
+    line("Zero-Rated Sales", zeroRated);
+    printf("----------------------------------------\n");
+
+    printf("Payment Method: %s", paymentMethod);
+    if (strcmp(paymentMethod, "CARD") == 0 || strcmp(paymentMethod, "E-WALLET") == 0)
+        printf(" (%s)", provider);
+    printf("\n");
+
+    if (strcmp(paymentMethod, "CARD") == 0) {
+        printf("Card No.: ************%s\n", lastFour);
+        printf("Approval No.: %s\n", approvalCode);
+        line("Amount Paid", payment);
+        line("Remaining Balance", remainingBalance);
+    } else if (strcmp(paymentMethod, "E-WALLET") == 0) {
+        line("Amount Paid", payment);
+        line("Remaining Balance", remainingBalance);
+    } else {
+        line("Cash Tendered", payment);
+        line("Change", change);
+    }
+
+    printf("----------------------------------------\n");
+    if (hasDiscount) {
+        printf("SC/PWD ID No.: ____________________\n");
+        printf("Name         : ____________________\n");
+        printf("Signature    : ____________________\n");
+        printf("----------------------------------------\n");
+    }
+    printf("  THIS SERVES AS YOUR OFFICIAL RECEIPT\n");
+    printf("----------------------------------------\n");
+    printf("     THANK YOU FOR CHOOSING SHAKEY'S!\n");
+    printf("            Have a great day!\n");
+    printf("========================================\n");
+
+    return 0;
+}
+    
